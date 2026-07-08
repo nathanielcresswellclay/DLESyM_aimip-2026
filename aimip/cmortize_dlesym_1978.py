@@ -76,9 +76,9 @@ def _valid_times_to_cf_numeric(valid_times):
 
     return numeric_times
 
-def save_daily_average(ds, output_dir, experiment, r, variable, units, long_name, surface=False):
+def save_daily_average(ds, output_dir, experiment, r, variable, units, long_name, surface=False, overwrite=False):
     # recursively make directory structure for output
-    path = os.path.join(output_dir, 'university_of_washington', 'DLESyM', experiment, f'r{r}i1p1f1', 'day', variable, 'gn', 'v20250825')
+    path = os.path.join(output_dir, 'university_of_washington', 'DLESyM', experiment, f'r{r}i1p1f1', 'day', variable, 'gn', 'v20260406')
     os.makedirs(path, exist_ok=True)
 
     # encoding instructions for netcdf
@@ -121,15 +121,18 @@ def save_daily_average(ds, output_dir, experiment, r, variable, units, long_name
     ds = _set_metadata_coordinates(ds, variable=variable, units=units, long_name=long_name, surface=surface)
     # filename: {variable}_{frequency}_{model_name}_{experiment}_{ensemble_member}_{grid}_{start_time}-{end_time}.nc
     file_name = f'{variable}_day_DLESyM_{experiment}_r{r}i1p1f1_gn_{start_time}-{end_time}.nc'
+    if os.path.exists(os.path.join(path, file_name)) and not overwrite:
+        logger.info(f"File {os.path.join(path, file_name)} already exists. Skipping...")
+        return
     logger.info(f"Saving daily average to {os.path.join(path, file_name)}")
     with ProgressBar():
         ds.to_netcdf(os.path.join(path, file_name), encoding=encoding)
     logger.info(f"Saved daily average to {os.path.join(path, file_name)}")
     
-def save_monthly_average(ds, output_dir, experiment, r, variable, units, long_name, surface=False):
+def save_monthly_average(ds, output_dir, experiment, r, variable, units, long_name, surface=False, overwrite=False):
 
     # recursively make directory structure for output
-    path = os.path.join(output_dir, 'university_of_washington', 'DLESyM', experiment, f'r{r}i1p1f1', 'Amon', variable, 'gn', 'v20250825')
+    path = os.path.join(output_dir, 'university_of_washington', 'DLESyM', experiment, f'r{r}i1p1f1', 'Amon', variable, 'gn', 'v20260406')
     os.makedirs(path, exist_ok=True)
 
     # Resample to monthly mean with labels at middle of month (16th)
@@ -176,6 +179,9 @@ def save_monthly_average(ds, output_dir, experiment, r, variable, units, long_na
 
     # filename: {variable}_{frequency}_{model_name}_{experiment}_{ensemble_member}_{grid}_{start_time}-{end_time}.nc
     file_name = f'{variable}_Amon_DLESyM_{experiment}_r{r}i1p1f1_gn_{start_time}-{end_time}.nc'
+    if os.path.exists(os.path.join(path, file_name)) and not overwrite:
+        logger.info(f"File {os.path.join(path, file_name)} already exists. Skipping...")
+        return
     logger.info(f"Saving monthly average to {os.path.join(path, file_name)}")
     with ProgressBar():
         ds.to_netcdf(os.path.join(path, file_name), encoding=encoding)
