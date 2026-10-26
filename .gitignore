@@ -6,6 +6,9 @@
 
 # ignore /home/disk/quicksilver2/zespinos/DLESyM/evaluation/enso_figure10/data
 evaluation/enso_figure10/data/
+# ignore logfiles 
+*/logs
+*.out
 
 # Ignore Python cache files
 *.pyc
