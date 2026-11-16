@@ -84,6 +84,12 @@ def coupled_inference_hdf5(args: argparse.Namespace):
     ocean_cfg.batch_size = batch_size
     ocean_cfg.data.prebuilt_dataset = True
 
+    # optionally redirect ground-truth (debugging) models to a different gt dataset than the one in their config
+    if getattr(args, 'atmos_gt_dataset', None) is not None:
+        atmos_cfg.model.gt_dataset = args.atmos_gt_dataset
+    if getattr(args, 'ocean_gt_dataset', None) is not None:
+        ocean_cfg.model.gt_dataset = args.ocean_gt_dataset
+
     # some models do not have custom cuda healpix padding flags in config, instead they assume default behavior of model class
     # here we ensure that this default behaviopr is overridden fore forecasting 
     if not hasattr(atmos_cfg.model,'enable_healpixpad'):
@@ -548,6 +554,10 @@ if __name__ == '__main__':
                         help="Name of init dataset, if different from files used for model training")  
     parser.add_argument('--ocean-dataset-name', type=str, default=None,
                         help="Name of init dataset, if different from files used for model training")
+    parser.add_argument('--atmos-gt-dataset', type=str, default=None,
+                        help="Override model.gt_dataset of an atmos ground-truth (debugging) model")
+    parser.add_argument('--ocean-gt-dataset', type=str, default=None,
+                        help="Override model.gt_dataset of an ocean ground-truth (debugging) model")
     parser.add_argument('--data-prefix', type=str, default=None,
                         help="Prefix for test data files")
     parser.add_argument('--data-suffix', type=str, default=None,

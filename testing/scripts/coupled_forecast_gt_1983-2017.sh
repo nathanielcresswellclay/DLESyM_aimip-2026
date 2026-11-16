@@ -21,10 +21,15 @@ UV_RUN="uv run ${UV_FLAGS:---frozen} --project ${MODULE_DIR}"
 ################ Model Params ################
 ATMOS_MODEL="${ATMOS_MODEL:-${MODULE_DIR}/models/atmos-forcing-model}"
 OCEAN_MODEL="${OCEAN_MODEL:-${MODULE_DIR}/models/ocean-forcing-model}"
-# NOTE: the ground truth datasets themselves are set by `model.gt_dataset` in each model's
-# .hydra/config.yaml. TODO: point both at your 1983-2017 gt zarr stores before running.
-#   atmos: 6H-resolvable HPX64 zarr with `targets` for the 9 atmos output variables
-#   ocean: daily HPX64 zarr with `targets` containing sst
+# Ground truth datasets (zarr with a `targets` variable). If unset, `model.gt_dataset` from each
+# model's .hydra/config.yaml is used.
+#   atmos: HPX64 zarr (time step dividing 6H) with `targets` for the 9 atmos output variables
+#   ocean: HPX64 zarr (time step dividing 48H) with `targets` containing sst
+ATMOS_GT_DATASET="${ATMOS_GT_DATASET:-}"
+OCEAN_GT_DATASET="${OCEAN_GT_DATASET:-}"
+GT_ARGS=()
+[[ -n "${ATMOS_GT_DATASET}" ]] && GT_ARGS+=(--atmos-gt-dataset "${ATMOS_GT_DATASET}")
+[[ -n "${OCEAN_GT_DATASET}" ]] && GT_ARGS+=(--ocean-gt-dataset "${OCEAN_GT_DATASET}")
 
 # Initialization data (loaders need data at the init time and the preceding input times)
 ATMOS_DATA_DIR="${ATMOS_DATA_DIR:-/path/to/atmos/init/data}"  # TODO
@@ -33,8 +38,8 @@ OCEAN_DATA_DIR="${OCEAN_DATA_DIR:-/path/to/ocean/init/data}"  # TODO
 OCEAN_DATASET_NAME="${OCEAN_DATASET_NAME:-hpx64_1983-2017_3h_1varCoupledOcean-z1000-ws10-olr}"
 
 ################ Simulation Params ################
-INIT="${INIT:-1983-01-02}"                          # must have init data and gt data available
-END="${END:-2017-12-31}"
+INIT="${INIT:-1983-07-04}"   # data starts 1983-07-02; ocean loader needs 48H of history. Init+gt data must exist
+END="${END:-2017-06-30}"   # data ends 2017-06-30T21:00
 # lead time (hours) must be a multiple of the 96H coupling cycle (lcm of atmos 12H and ocean 96H)
 DAYS=$(( ($(date -u -d ${END} +%s) - $(date -u -d ${INIT} +%s)) / 86400 ))
 LEAD_TIME=$(( DAYS / 4 * 96 ))
@@ -70,4 +75,5 @@ ${UV_RUN} python scripts/coupled_forecast_hdf5.py \
     --ocean-data-directory ${OCEAN_DATA_DIR} \
     --atmos-dataset-name ${ATMOS_DATASET_NAME} \
     --ocean-dataset-name ${OCEAN_DATASET_NAME} \
+    "${GT_ARGS[@]}" \
     --gpu ${DEVICE_NUMBERS}

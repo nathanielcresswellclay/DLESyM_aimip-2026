@@ -8,8 +8,9 @@
 # The job's working directory must be the REPO ROOT (log dir and relative paths depend on it). Either
 # run sbatch from the repo root, or pass --chdir=<repo root> (what Claude does over ssh):
 #   sbatch testing/scripts/mn5/gt_simulation.sbatch                 # 2h debug QoS, default settings
+#   sbatch --export=ALL,END=1984-07-03 testing/scripts/mn5/gt_simulation.sbatch   # 1-year timing run
 #   sbatch --qos=gp_bsces --time=48:00:00 \
-#          --export=ALL,INIT=1983-01-02,END=2017-12-31,OUTPUT_DIR=/gpfs/scratch/bsc32/bsc930186/gt_sim \
+#          --export=ALL,INIT=1983-07-04,END=2017-06-30,OUTPUT_DIR=/gpfs/scratch/bsc32/bsc930186/gt_sim \
 #          testing/scripts/mn5/gt_simulation.sbatch
 # Other overridable variables are listed at the top of coupled_forecast_gt_1983-2017.sh.
 
@@ -31,6 +32,19 @@ export MODULE_DIR="${MODULE_DIR:-$PWD}"
 cd "${MODULE_DIR}"
 
 module load uv
+# MN5 defaults: the observation stores are used as both initialization data and ground truth.
+# Override any of these with --export=ALL,VAR=...
+DATA_DIR=/gpfs/scratch/bsc32/bsc930186/agu_advances_2025
+OCEAN_STORE=hpx64_1983-2017_3h_1varCoupledOcean-z1000-ws10-olr
+ATMOS_STORE=hpx64_1983-2017_3h_9varCoupledAtmos-sst
+export ATMOS_DATA_DIR="${ATMOS_DATA_DIR:-$DATA_DIR}"
+export OCEAN_DATA_DIR="${OCEAN_DATA_DIR:-$DATA_DIR}"
+export ATMOS_DATASET_NAME="${ATMOS_DATASET_NAME:-$ATMOS_STORE}"
+export OCEAN_DATASET_NAME="${OCEAN_DATASET_NAME:-$OCEAN_STORE}"
+export ATMOS_GT_DATASET="${ATMOS_GT_DATASET:-$DATA_DIR/$ATMOS_STORE.zarr}"
+export OCEAN_GT_DATASET="${OCEAN_GT_DATASET:-$DATA_DIR/$OCEAN_STORE.zarr}"
+export OUTPUT_DIR="${OUTPUT_DIR:-/gpfs/scratch/bsc32/bsc930186/gt_sim/${SLURM_JOB_ID}}"
+
 export UV_FLAGS="--no-sync"        # offline: never touch the network or modify .venv
 export UV_OFFLINE=1
 export DEVICE_NUMBERS=-1
