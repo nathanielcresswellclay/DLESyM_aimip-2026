@@ -340,11 +340,11 @@ class atmos_gt_model(th.nn.Module):
             self.integration_counter=0
 
         # need a pdTimedelta object for time arithmatic 
-        dt = pd.Timedelta(str(self.delta_t) + 'H')
+        dt = pd.Timedelta(hours=self.delta_t)
 
-        # output array buffer. hard coded for hpx32. This will do for now. issues in the future will 
-        # fail loudly
-        output_array = th.empty([1, 12, self.output_time_dim, self.output_channels, 32, 32])
+        # output array buffer, resolution taken from the ground truth dataset
+        nside = self.gt_dataset.sizes['height']
+        output_array = th.empty([1, 12, self.output_time_dim, self.output_channels, nside, nside])
 
         for i in range(0,self.output_time_dim):
         
