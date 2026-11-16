@@ -32,11 +32,25 @@ export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 
 echo "git: $(git rev-parse --short HEAD) on $(git branch --show-current)"
 
-# coupled_forecast*.py silently falls back to CPU if CUDA is unavailable; for GPU jobs fail fast instead.
+# coupled_forecast*.py silently falls back to CPU if CUDA is unavailable, and torch.cuda.is_available()
+# is True even when the installed torch has no kernels for the GPU architecture (torch 1.13+cu117 has none
+# for H100/sm_90). For GPU jobs, run real ops on the device (matmul + conv) and fail fast.
+# CHECK_ONLY=1 exits after this check (cheap smoke test of a node type / torch build).
 if [[ "${DEVICE_NUMBERS}" != "-1" ]]; then
     nvidia-smi -L
-    uv run --no-sync --project "${MODULE_DIR}" python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda device', torch.cuda.get_device_name(${DEVICE_NUMBERS}))"
+    uv run --no-sync --project "${MODULE_DIR}" python -c "
+import torch
+assert torch.cuda.is_available(), 'CUDA not available'
+d = torch.device('cuda:${DEVICE_NUMBERS}')
+print('torch', torch.__version__, '|', torch.cuda.get_device_name(d), '| capability', torch.cuda.get_device_capability(d), '| compiled for', torch.cuda.get_arch_list())
+x = torch.randn(64, 64, device=d)
+y = (x @ x).sum().item()
+c = torch.nn.Conv2d(3, 4, 3).to(d)(torch.randn(2, 3, 16, 16, device=d)).sum().item()
+torch.cuda.synchronize()
+print('GPU kernels OK: matmul and conv2d ran on', d)
+"
 fi
+if [[ "${CHECK_ONLY:-0}" == "1" ]]; then echo "CHECK_ONLY set: stopping before the simulation"; exit 0; fi
 
 bash testing/scripts/coupled_forecast_gt_1983-2017.sh
 
