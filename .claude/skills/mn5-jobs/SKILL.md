@@ -12,13 +12,14 @@ Batch scripts live in the repo (`testing/scripts/mn5/*.sbatch`) and reach MN5 vi
 ```
 ssh mn5_gpp sbatch --chdir=/gpfs/scratch/bsc32/bsc930186/DLESyM_aimip-2026 testing/scripts/mn5/gt_simulation.sbatch
 ```
+- GPU variant: `ssh mn5 sbatch --chdir=<repo> testing/scripts/mn5/gt_simulation_acc.sbatch` (submit from `mn5`/alogin1; QoS `acc_debug`, max 2h and only ONE submitted job per user at a time; 1 GPU + 20 cores; device 0). It fails fast if CUDA is unavailable rather than falling back to CPU. Both wrappers share `gt_simulation_common.sh`.
 - Override via flags *before* the script path: `--qos=gp_bsces --time=48:00:00 --export=ALL,INIT=...,END=...,OUTPUT_DIR=...`. Flags override the `#SBATCH` lines.
 - `--chdir` is required since the ssh command can't `cd`; the job's logs go to `<repo>/logs/gt_simulation/<jobid>.out` (dir is tracked via `.gitkeep`).
 - First submission of any new/changed script: use the default `gp_debug` 2h QoS (short queue, high priority) as a smoke test before a long run. Say what you are about to submit (script, QoS, time, overrides, commit hash on MN5) before running it.
 - Output is `Submitted batch job <ID>`: record the ID and tell the user.
 
 ## Monitor
-- Queue: `ssh mn5_gpp squeue -u bsc930186 -o "%.10i %.9P %.12j %.8T %.10M %.10l %.6D %R"` (add `-j <ID>`). Pending reason is in `%R`.
+- Queue: `ssh mn5_gpp squeue -u bsc930186 -o %i,%P,%T,%M,%l,%R` (add `-j <ID>`). Pending reason is in `%R`. Keep the `-o` format free of spaces/quotes: ssh re-splits the remote command, so a quoted format string breaks (`Unrecognized option`).
 - Finished/failed: `ssh mn5_gpp sacct -j <ID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList -X`.
 - Details: `ssh mn5_gpp scontrol show job <ID>`.
 - Don't poll in a tight loop. Check at sensible intervals (use the harness's wait/loop facilities if available); a pending debug job usually starts in minutes, a 48h `gp_bsces` job may queue for hours.

@@ -1,5 +1,6 @@
 #!/bin/bash
-# MareNostrum5 (GPP, CPU-only) wrapper around testing/scripts/coupled_forecast_gt_1983-2017.sh
+# MareNostrum5 GPP (CPU-only) wrapper around the coupled gt simulation (job logic is in
+# gt_simulation_common.sh; a GPU variant is gt_simulation_acc.sbatch).
 #
 # The gt "forcing" models need no GPU, so this runs on the general-purpose partition (submit from
 # glogin = `ssh mn5_gpp`). Compute nodes have NO internet: the uv environment (.venv) must already
@@ -24,34 +25,5 @@
 #SBATCH --output=logs/gt_simulation/%j.out
 #SBATCH --error=logs/gt_simulation/%j.out
 
-set -euo pipefail
-echo "START $(date)  job=${SLURM_JOB_ID}  node=$(hostname)"
-
-# Slurm runs a spooled copy of this file, so the repo root is the job's working dir, not the script dir.
-export MODULE_DIR="${MODULE_DIR:-$PWD}"
-cd "${MODULE_DIR}"
-
-module load uv
-# MN5 defaults: the observation stores are used as both initialization data and ground truth.
-# Override any of these with --export=ALL,VAR=...
-DATA_DIR=/gpfs/scratch/bsc32/bsc930186/agu_advances_2025
-OCEAN_STORE=hpx64_1983-2017_3h_1varCoupledOcean-z1000-ws10-olr
-ATMOS_STORE=hpx64_1983-2017_3h_9varCoupledAtmos-sst
-export ATMOS_DATA_DIR="${ATMOS_DATA_DIR:-$DATA_DIR}"
-export OCEAN_DATA_DIR="${OCEAN_DATA_DIR:-$DATA_DIR}"
-export ATMOS_DATASET_NAME="${ATMOS_DATASET_NAME:-$ATMOS_STORE}"
-export OCEAN_DATASET_NAME="${OCEAN_DATASET_NAME:-$OCEAN_STORE}"
-export ATMOS_GT_DATASET="${ATMOS_GT_DATASET:-$DATA_DIR/$ATMOS_STORE.zarr}"
-export OCEAN_GT_DATASET="${OCEAN_GT_DATASET:-$DATA_DIR/$OCEAN_STORE.zarr}"
-export OUTPUT_DIR="${OUTPUT_DIR:-/gpfs/scratch/bsc32/bsc930186/gt_sim/${SLURM_JOB_ID}}"
-
-export UV_FLAGS="--no-sync"        # offline: never touch the network or modify .venv
-export UV_OFFLINE=1
 export DEVICE_NUMBERS=-1
-export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
-
-echo "git: $(git rev-parse --short HEAD) on $(git branch --show-current)"
-
-bash testing/scripts/coupled_forecast_gt_1983-2017.sh
-
-echo "END $(date)"
+bash testing/scripts/mn5/gt_simulation_common.sh
